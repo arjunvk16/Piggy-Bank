@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Piggy Bank</title>
+    <!-- Phosphor Icons for lightweight, clean SVG icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --bg-main: #0a0a0a;
+            --bg-card: #121212;
+            --border-color: #262626;
+            --text-main: #ffffff;
+            --text-muted: #a3a3a3;
+            --accent: #10b981; /* Emerald 500 */
+            --accent-hover: #34d399; /* Emerald 400 */
+            --accent-bg: rgba(16, 185, 129, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 2rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+
+        /* Decorative background glow */
+        .glow {
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 250px;
+            height: 250px;
+            background: var(--accent);
+            filter: blur(100px);
+            opacity: 0.15;
+            pointer-events: none;
+            border-radius: 50%;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-sub {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .title i {
+            color: var(--accent);
+            font-size: 1.25rem;
+        }
+
+        .reset-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .reset-btn:hover {
+            color: #f87171;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .reset-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Main Display */
+        .main-display {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .amount {
+            font-size: 3.75rem;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            margin-bottom: 1rem;
+            line-height: 1;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-weight: 500;
+        }
+
+        .stat-badge i {
+            font-size: 1rem;
+        }
+
+        .stat-saved {
+            background: var(--accent-bg);
+            color: var(--accent);
+        }
+
+        .stat-goal {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-muted);
+        }
+
+        /* Progress Bar */
+        .progress-section {
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-track {
+            height: 8px;
+            background: #262626;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 999px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            width: 0%;
+        }
+
+        /* Add/Take Input */
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+            z-index: 1;
+        }
+
+        .currency-symbol {
+            position: absolute;
+            left: 1rem;
+            color: var(--text-muted);
+            font-size: 1.125rem;
+            pointer-events: none;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1rem 9rem 1rem 2.5rem; /* Room for both buttons */
+            font-size: 1.125rem;
+            color: var(--text-main);
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input[type="number"]:focus {
+            border-color: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.5);
+        }
+
+        input[type="number"]::placeholder {
+            color: #525252;
+        }
+
+        input::-webkit-outer-spin-button, 
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .action-buttons {
+            position: absolute;
+            right: 0.5rem;
+            display: flex;
+            gap: 0.25rem;
+            height: calc(100% - 1rem);
+        }
+
+        .action-btn {
+            border: none;
+            padding: 0 1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-add {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-add:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        .btn-withdraw {
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.2);
+        }
+
+        .btn-withdraw:hover:not(:disabled) {
+            background: rgba(248, 113, 113, 0.2);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .success-msg {
+            background: var(--accent-bg);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--accent);
+            padding: 1rem;
+            border-radius: 1rem;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+            margin-bottom: 1rem;
+        }
+
+        /* Admin Button & Modal Styles */
+        .admin-trigger {
+            display: block;
+            margin: 1.5rem auto 0;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+        .admin-trigger:hover {
+            color: var(--text-main);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5rem;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            transform: translateY(20px);
+            transition: transform 0.2s;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        .close-btn:hover { color: #f87171; }
+        .transaction-list {
+            padding: 1rem;
+            overflow-y: auto;
+            flex: 1;
+            list-style: none;
+        }
+        .txn-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            margin-bottom: 0.5rem;
+            min-height: 72px;
+        }
+        .txn-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .txn-amount { font-weight: 600; }
+        .txn-date { font-size: 0.75rem; color: var(--text-muted); }
+        .txn-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 4px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+        .btn-edit { color: #60a5fa; }
+        .btn-edit:hover { background: rgba(96, 165, 250, 0.1); }
+        .btn-delete { color: #f87171; }
+        .btn-delete:hover { background: rgba(248, 113, 113, 0.1); }
+        .empty-state { text-align: center; color: var(--text-muted); padding: 2rem; font-size: 0.875rem; }
+        
+        .reset-confirm-text { font-size: 0.8rem; font-weight: bold; color: #f87171; }
+
+        /* Loading Screen */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(18, 18, 18, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 
+            to { transform: rotate(360deg); } 
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <!-- Glow effect -->
+        <div class="glow"></div>
+
+        <!-- Initial Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div class="header">
+            <div class="title">
+                <i class="ph-fill ph-piggy-bank"></i>
+                Piggy Bank
+            </div>
+            <button id="resetBtn" class="reset-btn" title="Empty Piggy Bank" disabled>
+                <i class="ph ph-arrow-counter-clockwise"></i>
+            </button>
+        </div>
+        <div class="header-sub">
+            Device Bank ID: <strong id="bankNameDisplay" style="color: var(--text-main);">...</strong>
+        </div>
+
+        <div class="main-display">
+            <div class="label">Remaining to Goal</div>
+            <div class="amount" id="remainingAmt">₹0</div>
+            
+            <div class="stats">
+                <div class="stat-badge stat-saved">
+                    <i class="ph-bold ph-plus"></i>
+                    Saved: <span id="savedAmt">₹0</span>
+                </div>
+                <div class="stat-badge stat-goal">
+                    <i class="ph-bold ph-target"></i>
+                    Goal: ₹50,000
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-section">
+            <div class="progress-labels">
+                <span>0%</span>
+                <span id="progressText">0%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+        </div>
+
+        <div class="success-msg" id="successMsg">
+            🎉 Congratulations! You reached your goal!
+        </div>
+
+        <div class="input-group" id="inputGroup">
+            <span class="currency-symbol">₹</span>
+            <input type="number" id="amountInput" placeholder="Enter amount..." min="1" step="any">
+            <div class="action-buttons">
+                <button id="withdrawBtn" class="action-btn btn-withdraw" disabled>Take</button>
+                <button id="addBtn" class="action-btn btn-add" disabled>Add</button>
+            </div>
+        </div>
+
+        <button id="adminTrigger" class="admin-trigger">Admin / View History</button>
+    </div>
+
+    <!-- Admin Modal -->
+    <div class="modal-overlay" id="adminModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Transaction History</div>
+                <button class="close-btn" id="closeAdminModal"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <ul class="transaction-list" id="transactionList">
+                <!-- Transactions will be injected here -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Firebase v10 Modular SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, collection, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJ9K9fQ0ThMB7aXB6qNHr3_yLUdqJgnCM",
+            authDomain: "my-chain-reaction-game.firebaseapp.com",
+            projectId: "my-chain-reaction-game",
+            storageBucket: "my-chain-reaction-game.appspot.com",
+            messagingSenderId: "32751418407",
+            appId: "1:32751418407:web:ff8244007ef2b099d56202",
+            measurementId: "G-D6ZRG8LK2H"
+        };
+
+        // Initialize Firebase Apps
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // App State & Constants
+        const GOAL = 50000;
+        let currentUser = null;
+        let isAdding = false;
+        let currentTotal = 0; // Tracks live total locally to validate withdrawals
+        let transactionsData = [];
+        let dbUnsubscribe = null;
+
+        // DOM Elements
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const bankNameDisplay = document.getElementById('bankNameDisplay');
+        const remainingAmtEl = document.getElementById('remainingAmt');
+        const savedAmtEl = document.getElementById('savedAmt');
+        const progressTextEl = document.getElementById('progressText');
+        const progressBarEl = document.getElementById('progressBar');
+        const amountInput = document.getElementById('amountInput');
+        const addBtn = document.getElementById('addBtn');
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const inputGroup = document.getElementById('inputGroup');
+        const successMsg = document.getElementById('successMsg');
+
+        // Admin DOM
+        const adminTrigger = document.getElementById('adminTrigger');
+        const adminModal = document.getElementById('adminModal');
+        const closeAdminModal = document.getElementById('closeAdminModal');
+        const transactionList = document.getElementById('transactionList');
+
+        // Automatically Sign In Anonymously
+        signInAnonymously(auth).catch(err => {
+            console.error("Auth error:", err);
+            loadingOverlay.classList.add('hidden');
+        });
+
+        // Track Auth State
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                bankNameDisplay.innerText = user.uid.substring(0, 8).toUpperCase(); 
+                setupDatabaseListener(user.uid);
+            }
+        });
+
+        // --- Real-time Database Listener ---
+        function setupDatabaseListener(uid) {
+            if (dbUnsubscribe) dbUnsubscribe();
+
+            const colRef = collection(db, 'users', uid, 'transactions');
+
+            dbUnsubscribe = onSnapshot(colRef, (snapshot) => {
+                let totalSaved = 0;
+                transactionsData = [];
+                
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    transactionsData.push({ id: docSnap.id, ...data });
+                    totalSaved += (data.amount || 0);
+                });
+
+                transactionsData.sort((a, b) => b.timestamp - a.timestamp);
+
+                currentTotal = totalSaved;
+                updateUI(totalSaved);
+                renderAdminList();
+                loadingOverlay.classList.add('hidden');
+                
+                // Enable controls
+                amountInput.disabled = false;
+                resetBtn.disabled = false;
+                checkInputState();
+            }, (error) => {
+                console.error("Database error:", error);
+                loadingOverlay.classList.add('hidden');
+            });
+        }
+
+        // Update the visual UI
+        function updateUI(totalSaved) {
+            const remaining = Math.max(GOAL - totalSaved, 0);
+            
+            // Prevent visual progress bar from breaking if transaction sum gets manually negative
+            const progressPercentage = Math.max(0, Math.min((totalSaved / GOAL) * 100, 100));
+            const isGoalReached = totalSaved >= GOAL;
+
+            // Format numbers nicely
+            remainingAmtEl.innerText = `₹${remaining.toLocaleString()}`;
+            savedAmtEl.innerText = `₹${totalSaved.toLocaleString()}`;
+            
+            // Update Progress Bar
+            progressTextEl.innerText = `${Math.floor(progressPercentage)}%`;
+            progressBarEl.style.width = `${progressPercentage}%`;
+
+            // Toggle Success View, keeping input group visible for potential withdraws
+            if (isGoalReached) {
+                successMsg.style.display = 'block';
+            } else {
+                successMsg.style.display = 'none';
+            }
+        }
+
+        // Check if Action buttons should be enabled
+        function checkInputState() {
+            const val = parseFloat(amountInput.value);
+            const isValid = !isNaN(val) && val > 0;
+            
+            addBtn.disabled = !isValid || isAdding || !currentUser;
+            // Prevent taking more than you have
+            withdrawBtn.disabled = !isValid || isAdding || !currentUser || val > currentTotal;
+        }
+        amountInput.addEventListener('input', checkInputState);
+
+        // Transaction Action (Add or Take)
+        async function handleTransaction(type) {
+            let amount = parseFloat(amountInput.value);
+            if (isNaN(amount) || amount <= 0 || !currentUser || isAdding) return;
+
+            if (type === 'withdraw') {
+                if (amount > currentTotal) return; // Failsafe
+                amount = -amount;
+            }
+
+            isAdding = true;
+            if (type === 'add') {
+                addBtn.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; border-width: 2px;"></div>';
+            } else {
+                withdrawBtn.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; border-width: 2px; border-top-color: #f87171;"></div>';
+            }
+            checkInputState();
+
+            const colRef = collection(db, 'users', currentUser.uid, 'transactions');
+
+            try {
+                await addDoc(colRef, {
+                    amount: amount,
+                    timestamp: Date.now()
+                });
+                amountInput.value = '';
+            } catch (error) {
+                console.error("Error adding doc:", error);
+            } finally {
+                isAdding = false;
+                addBtn.innerText = 'Add';
+                withdrawBtn.innerText = 'Take';
+                checkInputState();
+            }
+        }
+
+        addBtn.addEventListener('click', () => handleTransaction('add'));
+        withdrawBtn.addEventListener('click', () => handleTransaction('withdraw'));
+        
+        // Allow hitting Enter key to default Add money
+        amountInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !addBtn.disabled) {
+                handleTransaction('add');
+            }
+        });
+
+        // Reset Action
+        resetBtn.addEventListener('click', async () => {
+            if (!currentUser) return;
+            
+            if(resetBtn.innerText === 'Sure?') {
+                transactionsData.forEach(async (txn) => {
+                    const docRef = doc(db, 'users', currentUser.uid, 'transactions', txn.id);
+                    await deleteDoc(docRef);
+                });
+                resetBtn.innerHTML = '<i class="ph ph-arrow-counter-clockwise"></i>';
+            } else {
+                const oldContent = resetBtn.innerHTML;
+                resetBtn.innerHTML = '<span class="reset-confirm-text">Sure?</span>';
+                setTimeout(() => {
+                    if (resetBtn.innerText === 'Sure?') resetBtn.innerHTML = oldContent;
+                }, 3000);
+            }
+        });
+
+        // --- Admin Menu Logic ---
+        
+        adminTrigger.addEventListener('click', () => {
+            adminModal.classList.add('active');
+        });
+
+        closeAdminModal.addEventListener('click', () => {
+            adminModal.classList.remove('active');
+        });
+
+        function renderAdminList() {
+            transactionList.innerHTML = '';
+            
+            if (transactionsData.length === 0) {
+                transactionList.innerHTML = '<div class="empty-state">No transactions found.</div>';
+                return;
+            }
+
+            transactionsData.forEach(txn => {
+                const li = document.createElement('li');
+                li.className = 'txn-item';
+                
+                const dateStr = new Date(txn.timestamp).toLocaleString();
+                const isPositive = txn.amount > 0;
+                const amountStr = isPositive ? `+ ₹${txn.amount.toLocaleString()}` : `- ₹${Math.abs(txn.amount).toLocaleString()}`;
+                const amountColor = isPositive ? 'var(--accent)' : '#f87171';
+                
+                li.innerHTML = `
+                    <div class="txn-info" id="info-${txn.id}">
+                        <span class="txn-amount" style="color: ${amountColor};">${amountStr}</span>
+                        <span class="txn-date">${dateStr}</span>
+                    </div>
+                    <div class="txn-actions" id="actions-${txn.id}">
+                        <button class="btn-icon btn-edit" title="Edit" data-id="${txn.id}"><i class="ph ph-pencil-simple"></i></button>
+                        <button class="btn-icon btn-delete" title="Delete" data-id="${txn.id}"><i class="ph ph-trash"></i></button>
+                    </div>
+
+                    <!-- Hidden Edit Form -->
+                    <div class="txn-edit-form hidden" id="edit-${txn.id}" style="display: none; width: 100%; gap: 8px;">
+                        <input type="number" id="input-${txn.id}" value="${txn.amount}" style="flex:1; padding: 4px 8px; border-radius:8px; border:1px solid #262626; background: #0a0a0a; color: white; outline: none; font-size: 1rem;">
+                        <button class="btn-icon btn-save" style="color: #10b981;" data-id="${txn.id}"><i class="ph-bold ph-check"></i></button>
+                        <button class="btn-icon btn-cancel" style="color: #f87171;" data-id="${txn.id}"><i class="ph-bold ph-x"></i></button>
+                    </div>
+                `;
+                transactionList.appendChild(li);
+            });
+
+            // Delete specific transaction
+            document.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    await deleteDoc(doc(db, 'users', currentUser.uid, 'transactions', id));
+                });
+            });
+
+            // Edit specific transaction
+            document.querySelectorAll('.btn-edit').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    document.getElementById(`info-${id}`).style.display = 'none';
+                    document.getElementById(`actions-${id}`).style.display = 'none';
+                    document.getElementById(`edit-${id}`).style.display = 'flex';
+                });
+            });
+
+            // Cancel Edit
+            document.querySelectorAll('.btn-cancel').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    document.getElementById(`info-${id}`).style.display = 'flex';
+                    document.getElementById(`actions-${id}`).style.display = 'flex';
+                    document.getElementById(`edit-${id}`).style.display = 'none';
+                });
+            });
+
+            // Save Edit
+            document.querySelectorAll('.btn-save').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    const inputEl = document.getElementById(`input-${id}`);
+                    const newAmount = parseFloat(inputEl.value);
+                    
+                    // Allow positive or negative edits, just not zero or empty
+                    if (!isNaN(newAmount) && newAmount !== 0) {
+                        await updateDoc(doc(db, 'users', currentUser.uid, 'transactions', id), {
+                            amount: newAmount
+                        });
+                    } else {
+                        document.getElementById(`info-${id}`).style.display = 'flex';
+                        document.getElementById(`actions-${id}`).style.display = 'flex';
+                        document.getElementById(`edit-${id}`).style.display = 'none';
+                    }
+                });
+            });
+        }
+
+    </script>
+</body>
+</html>
